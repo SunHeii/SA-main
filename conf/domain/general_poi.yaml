@@ -1,0 +1,107 @@
+# =====================================================================
+# Step 5: 结构化配置落地 (Structured Configuration Landing)
+# =====================================================================
+name: general_poi
+
+# =====================================================================
+# Step 4: 基座模型选型与对齐 (Base Model Selection)
+# =====================================================================
+# 注：你目前使用的是基于餐饮微调的 BERT-DK_rest。
+# 虽然带有餐饮偏置，但在底层语义上依然具备强大的泛化能力（能理解好坏）。
+# 为了保证你代码的正常运行，保留你的本地物理路径，未来可替换为通用 Yelp BERT。
+bert_mapper: /home/mysjz/mywork/Models/bert-base-uncased-yelp-polarity
+sbert_mapper: /home/mysjz/mywork/Models/all-mpnet-base-v2
+
+# =====================================================================
+# Step 1: 以终为始：定义推荐系统的特征维度 (Core Aspect Categories)
+# =====================================================================
+# 提炼出跨越所有物理空间（商场、公园、酒店、餐厅等）的 5 个核心基础维度
+aspect_category_mapper: ['service', 'environment', 'price', 'location', 'core_experience']
+
+# =====================================================================
+# Step 2: 工业级降维打击：泛化与扩充高质量方面种子词 (Aspect Seed Words)
+# =====================================================================
+# 【改造核心】：种子词规模扩张至单类别 40-50 词，全面覆盖各类实体商业场景。
+aspect_seed_mapper:
+  # 涵盖餐厅服务员、商场导购、酒店前台、医院护士、景区检票员等所有服务交互
+  service: [
+    "service", "staff", "waiter", "waitress", "manager", "employee", "receptionist", "cashier", "guide", "host", 
+    "security", "customer", "attitude", "friendly", "rude", "helpful", "wait", "line", "queue", "speed", 
+    "communication", "professional", "greeting", "hospitality", "response", "checkout", "booking", "appointment", 
+    "attention", "management", "slow", "fast", "attentive", "ignored", "welcome", "knowledgeable", "treatment",
+    "delivery", "recommendation", "owner", "crew", "team"
+  ]
+  
+  # 涵盖卫生、噪音、拥挤度、音乐、装修、温度、设施状态等物理空间属性
+  environment: [
+    "ambience", "atmosphere", "environment", "vibe", "decor", "interior", "exterior", "building", "space", "clean", 
+    "dirty", "loud", "noisy", "quiet", "peaceful", "beautiful", "crowded", "empty", "seating", "restroom", "bathroom", 
+    "temperature", "ac", "lighting", "music", "design", "view", "layout", "background", "setting", "facility", 
+    "architecture", "condition", "maintenance", "smell", "comfortable", "cozy", "spacious", "patio", "vibrancy"
+  ]
+  
+  # 涵盖菜单价格、门票、住宿费、理发费、停车费、性价比、折扣等一切金钱概念
+  price: [
+    "price", "cost", "value", "money", "expensive", "cheap", "affordable", "reasonable", "overpriced", "bill", 
+    "fee", "charge", "ticket", "admission", "discount", "sale", "deal", "bargain", "budget", "worth", 
+    "rip-off", "scam", "premium", "rate", "tax", "tip", "pricing", "economical", "exorbitant", "bucks",
+    "dimes", "penny", "promotion", "quality"
+  ]
+
+  # 涵盖交通便利度、好不好停车、街区安全性、地理位置（对推荐系统的时空转移至关重要）
+  location: [
+    "location", "parking", "convenient", "accessible", "walk", "drive", "transit", "subway", "bus", "street", 
+    "neighborhood", "area", "nearby", "close", "far", "distance", "traffic", "safety", "safe", "dangerous", 
+    "central", "hidden", "find", "directions", "spot", "garage", "valet", "lot", "easy", "hard", "navigating"
+  ]
+
+  # 【万金油维度】：无论去吃大餐、买衣服、住酒店还是看演出，这里的词汇都能抓取到该商户的核心交付物
+  core_experience: [
+    "experience", "quality", "product", "item", "food", "taste", "menu", "drink", "selection", "variety", 
+    "stock", "brand", "ride", "event", "exhibit", "massage", "haircut", "treatment", "game", "show", 
+    "performance", "movie", "room", "bed", "stay", "activity", "fun", "boring", "memorable", "freshness",
+    "portion", "ingredients", "flavor", "dish", "meal", "goods", "inventory"
+  ]
+
+# =====================================================================
+# Step 3: 情感锚定：扩充真实语境的情感极性词 (Sentiment Categories & Seeds)
+# =====================================================================
+# 【改造核心】：引入跨场景的极致夸赞与恶劣吐槽，增加网络俚语和高频形容词
+sentiment_category_mapper: ['negative', 'positive']
+sentiment_seed_mapper:
+  positive: [
+    "good", "great", "nice", "excellent", "perfect", "delicious", "amazing", "friendly", "fantastic", "awesome",
+    "phenomenal", "outstanding", "recommend", "incredible", "fresh", "loved", "best", "yummy", "tasty",
+    "attentive", "impeccable", "fabulous", "superb", "beautiful", "enjoyed", "wonderful", "satisfied", "happy",
+    "clean", "professional", "gem", "brilliant", "top-notch", "delightful", "pleasant", "flawless", "glad"
+  ]
+  negative: [
+    "bad", "terrible", "horrible", "disappointed", "awful", "rude", "overpriced", "worst", "bland", "dirty",
+    "mediocre", "cold", "slow", "unacceptable", "flavorless", "gross", "nasty", "ignored", "expensive",
+    "stale", "poor", "sucks", "disgusting", "mess", "unprofessional", "waste", "regret", "avoid", "trash", 
+    "broken", "closed", "ruined", "unhappy", "rip-off", "terrible", "sad", "fail"
+  ]
+
+# ---------------------------------------------------------------------
+# 模型控制与超参数设置 (Hyperparameters & Thresholds)
+# ---------------------------------------------------------------------
+# 设置置信度阈值：低于该阈值的伪标签将被丢弃，保证训练数据的纯净度
+cat_threshold: 0.4
+pol_threshold: 0.35
+
+# 验证集切分（针对弱监督生成的伪标签）
+validation_data_size: 100
+hyper_validation_size: 0.8
+
+# 权重微调：由于从 4 个维度扩充到了 5 个维度，必须对应加上 5 个权重值
+aspect_weights: [100, 100, 100, 100, 100]
+sentiment_weights: [100, 100]
+
+# 优化器与 Focal Loss 参数
+params:
+  learning_rate: 1e-5
+  beta1: 0.97
+  beta2: 0.999
+  batch_size: 12
+  gamma1: 4
+  gamma2: 4
